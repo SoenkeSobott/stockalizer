@@ -26,7 +26,7 @@ print('Acc: ', val_acc)
 
 
 model.save('num_prediction')
-new_model = tf.keras.models.load_model('num_prediction')
+new_model = tf.keras.models.load_model('')
 
 predictions = new_model.predict([x_test])
 
