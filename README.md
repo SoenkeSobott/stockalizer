@@ -3,9 +3,9 @@
 ## Todo
 
 ### Alex
-* Check Twitter API
-* Look up data sets
+* Evaluate Sentiment analysis options
+* Evaluate youtube tutorials
 
 ### Soenke
-* Manage Mongo and API
-* Look more into ML/DL with tensorflow, keras, etc.
+* Evaluate text classification
+* Evaluate youtube tutorials
