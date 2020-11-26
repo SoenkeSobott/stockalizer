@@ -1,6 +1,7 @@
 import tweepy
 
 from textblob import TextBlob
+from datetime import datetime
 
 from ssh.keys import API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
 import json
@@ -20,23 +21,13 @@ class StreamListener(tweepy.StreamListener):
     def process_data(self, data):
         pprint(data)
         tweet = data['text']
-        text = tweet.replace('RT', '')
-        if text.startswith(' @'):
-            position = text.index(':')
-            text = text[position+2:]
-
-        if text.startswith('@'):
-            position = text.index(' ')
-            text = text[position+2:]
-
-        analysis = TextBlob(text)
-        tweet_polarity = analysis.polarity
+        now = datetime.now()
+        date_string = now.strftime("%Y-%m-%d %H:%M:%S") + " +0000"
         put_data = {
             "tweetId": data['id'],
             "owner": data['user']['screen_name'],
             "text": tweet,
-            "createdAt": "2020-05-08 19:30:44 +0000"}
-        print(tweet_polarity)
+            "createdAt": date_string}
         print(put_data)
         response = requests.put(
             'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==', data=json.dumps(put_data))
