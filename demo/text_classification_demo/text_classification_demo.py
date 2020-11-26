@@ -12,10 +12,16 @@ def decode_review(text):
 # Get model
 model = tf.keras.models.load_model('text_classification')
 
+# Get tweet
+tweet = 'This is a wonderful day. The weather is great and I have a lot of fun here.'
+tweet.replace(',' '', ).replace('.', '') # remove because mapping is for here. only for here
+
+
 index = 29
 test_review = test_data[index]
 predict = model.predict([test_review])
 print("Review: ")
+print(test_review)
 print(decode_review(test_review))
 print("Prediction: " + str(predict[0]))
 print("Actual: " + str(test_labels[index]))
