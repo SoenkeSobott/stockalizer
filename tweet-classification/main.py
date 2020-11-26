@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from util import word_index, test_data, test_labels
 
-# This script uses the in 'model.pa' defined model to analyze tweets.
+# This script uses the in 'model.py' defined model to analyze tweets.
 
 # Get the reverse word index
 reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
@@ -36,11 +36,15 @@ def encode_review(tweet_array):
 model = tf.keras.models.load_model('text_classification')
 
 # TODO: Get tweet
+# Extract tweet from twitter on publish (Alex already did that)
+# Categorise them (positive or negative)
+# sent them (with prediction) to mongo
+
 tweet = 'This is a wonderful day. The weather is great and I have a lot of fun here.'
 tweet = tweet.replace(".", "").replace(",", "").replace(":", "").split()
 encoded_tweet = encode_review(tweet)
 encoded_tweet = keras.preprocessing.sequence.pad_sequences([encoded_tweet], value=word_index["<PAD>"], padding="post",
-                                                           maxlen=250)
+                                                           maxlen=200)
 
 # Predict the value and print to standard output
 predict = model.predict(encoded_tweet)

@@ -7,9 +7,9 @@ from util import word_index, train_data, train_labels
 
 # Preprocessing our data: make all reviews the same length
 train_data = keras.preprocessing.sequence.pad_sequences(train_data, value=word_index["<PAD>"], padding="post",
-                                                        maxlen=250)
+                                                        maxlen=200)
 test_data = keras.preprocessing.sequence.pad_sequences(train_data, value=word_index["<PAD>"], padding="post",
-                                                       maxlen=250)
+                                                       maxlen=200)
 
 # Define model
 model = keras.Sequential()
