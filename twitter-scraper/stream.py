@@ -21,13 +21,11 @@ class StreamListener(tweepy.StreamListener):
     def process_data(self, data):
         pprint(data)
         tweet = data['text']
-        now = datetime.now()
-        date_string = now.strftime("%Y-%m-%d %H:%M:%S") + " +0000"
         put_data = {
             "tweetId": data['id'],
             "owner": data['user']['screen_name'],
             "text": tweet,
-            "createdAt": date_string}
+            "prediction": 0.12}  # TODO: predict value from model
         print(put_data)
         response = requests.put(
             'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==', data=json.dumps(put_data))
