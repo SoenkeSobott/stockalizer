@@ -1,7 +1,6 @@
 import tweepy
 
 from textblob import TextBlob
-from datetime import datetime
 
 from ssh.keys import API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
 import json
@@ -29,7 +28,7 @@ class StreamListener(tweepy.StreamListener):
         print(put_data)
         response = requests.put(
             'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==', data=json.dumps(put_data))
-        print(response)
+        print(response)  # TODO: remove the API key from here
 
     def on_error(self, status_code):
         if status_code == 420:
