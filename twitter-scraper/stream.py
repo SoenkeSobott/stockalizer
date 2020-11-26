@@ -34,8 +34,8 @@ class StreamListener(tweepy.StreamListener):
         put_data = {
             "tweetId": data['id'],
             "owner": data['user']['screen_name'],
-            "text": tweet
-        }
+            "text": tweet,
+            "createdAt": "2020-05-08 19:30:44 +0000"}
         print(tweet_polarity)
         print(put_data)
         response = requests.put(
