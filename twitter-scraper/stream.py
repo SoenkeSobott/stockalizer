@@ -17,6 +17,23 @@ def get_sentiment_score(sentence):
     return sentiment['compound']
 
 
+def process_data(data):
+    pprint(data)
+    tweet = data['text']
+    sentiment_score = get_sentiment_score(tweet)
+    put_data = {
+        "tweetId": data['id'],
+        "owner": data['user']['screen_name'],
+        "text": tweet,
+        "prediction": sentiment_score}
+    print(put_data)
+    response = requests.put(
+        'https://stockalizer.azurewebsites.net/api/tweets?code'
+        '=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==',
+        data=json.dumps(put_data))
+    print(response)  # TODO: remove the API key from here
+
+
 class StreamListener(tweepy.StreamListener):
 
     def on_data(self, raw_data):
@@ -24,31 +41,16 @@ class StreamListener(tweepy.StreamListener):
         if 'delete' in data:
             print('deleted tweet')
         else:
-            self.process_data(data)
-
-    def process_data(self, data):
-        pprint(data)
-        tweet = data['text']
-        sentiment_score = get_sentiment_score(tweet)
-        put_data = {
-            "tweetId": data['id'],
-            "owner": data['user']['screen_name'],
-            "text": tweet,
-            "prediction": sentiment_score}
-        print(put_data)
-        response = requests.put(
-            'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==',
-            data=json.dumps(put_data))
-        print(response)  # TODO: remove the API key from here
+            process_data(data)
 
     def on_error(self, status_code):
         if status_code == 420:
             return False
 
 
-class Stream():
-    def __init__(self, auth, listener):
-        self.stream = tweepy.Stream(auth=auth, listener=listener)
+class Stream:
+    def __init__(self, auth_token, stream_listener):
+        self.stream = tweepy.Stream(auth=auth_token, listener=stream_listener)
 
     def start(self):
         # das ist meine id
