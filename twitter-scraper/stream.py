@@ -1,11 +1,20 @@
 import tweepy
-
-from textblob import TextBlob
-
 from ssh.keys import API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
 import json
 from pprint import pprint
 from pip._vendor import requests
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+
+def get_sentiment_score(sentence):
+    analyzer = SentimentIntensityAnalyzer()
+
+    sentiment = analyzer.polarity_scores(sentence)
+    print("Overall sentiment dictionary is : ", sentiment)
+    print("sentence was rated as ", sentiment['neg'] * 100, "% Negative")
+    print("sentence was rated as ", sentiment['neu'] * 100, "% Neutral")
+    print("sentence was rated as ", sentiment['pos'] * 100, "% Positive")
+    return sentiment['compound']
 
 
 class StreamListener(tweepy.StreamListener):
@@ -20,14 +29,16 @@ class StreamListener(tweepy.StreamListener):
     def process_data(self, data):
         pprint(data)
         tweet = data['text']
+        sentiment_score = get_sentiment_score(tweet)
         put_data = {
             "tweetId": data['id'],
             "owner": data['user']['screen_name'],
             "text": tweet,
-            "prediction": 0.12}  # TODO: predict value from model
+            "prediction": sentiment_score}
         print(put_data)
         response = requests.put(
-            'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==', data=json.dumps(put_data))
+            'https://stockalizer.azurewebsites.net/api/tweets?code=lZjlUl6QSaCXDJJANyhM8xAMtQUk6i1B90qzliaxKmNdLywWxfzUWw==',
+            data=json.dumps(put_data))
         print(response)  # TODO: remove the API key from here
 
     def on_error(self, status_code):
