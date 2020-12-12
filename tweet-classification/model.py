@@ -38,7 +38,7 @@ model.save('text_classification.h5')
 
 
 # Upload model to Azure blob storage
-blob_service_client = BlobServiceClient.from_connection_string("DefaultEndpointsProtocol=https;AccountName=stockalizerstorage;AccountKey=XoRruDKqgd26ur8G0n2Wy70ZTEfHxPmBsyvbBeQsbW5ceXpBkSJnaueLbSBREgLUondnKlZ9byFt9CSz40jcog==;EndpointSuffix=core.windows.net")
+blob_service_client = BlobServiceClient.from_connection_string("your-azure-blob-storage-connection-string")
 container_client = blob_service_client.get_container_client("models")
 
 # Instantiate two blob clients
