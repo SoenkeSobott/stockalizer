@@ -63,7 +63,7 @@ df['encoded_title'] = df['title'].apply(lambda title: prepare_news_title(title))
 # Add sentiment score to each row in file
 df['sentiment_score'] = df['encoded_title'].apply(lambda encoded_title: (model.predict(encoded_title)[0])[0])
 
-# Remove unnecessary column
+# Remove unnecessary columns
 del df['encoded_title']
 del df['title']
 
