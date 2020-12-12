@@ -1,27 +1,41 @@
 import tensorflow as tf
-from tensorflow import keras
-from util import word_index, test_data, test_labels
+from util import word_index
 
-# This script uses the in 'model.py' defined model to analyze tweets.
+
+# This is a script for testing the trained model for text classification from the
+# model.py script.
+
 
 # Get the reverse word index
 reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
 
 
-def decode_review(encoded_tweet):
-    """Decodes the passed array.
+def decode(array):
+    """
+    Decodes the passed array. This means that the encoded words from the array are mapped
+    to their referenced values in the word_index dictionary.
+    Example: in: [3244, 345, 4, 23444]   out: ["this", "is", "a", "test"]
 
-        :param encoded_tweet: encoded tweet array
-        :returns: decoded String of the encoded tweet
+    Args:
+        array: The array with all the encoded words that need to be decoded.
+
+    Returns:
+        The decoded array.
     """
     return " ".join([reverse_word_index.get(i, "?") for i in encoded_tweet])
 
 
-def encode_review(tweet_array):
-    """Encodes the passed array.
+def encode(array):
+    """
+    Encodes the passed array. This means that the words from the array are mapped
+    to their referenced values in the word_index dictionary.
+    Example: in: ["this", "is", "a", "test"]   out: [3244, 345, 4, 23444]
 
-    :param tweet_array: an array of words representing a tweet
-    :returns: a array with the mapped values
+    Args:
+        array: The array with all the words that need to be encoded.
+
+    Returns:
+        The encoded array.
     """
     encoded = [1]
     for word in tweet:
@@ -33,21 +47,16 @@ def encode_review(tweet_array):
 
 
 # Load the model
-model = tf.keras.models.load_model('text_classification')
+model = tf.keras.models.load_model('text-classification-blob.h5')
 
-# TODO: Get tweet
-# Extract tweet from twitter on publish (Alex already did that)
-# Categorise them (positive or negative)
-# sent them (with prediction) to mongo
-
-tweet = 'This is a wonderful day. The weather is great and I have a lot of fun here.'
+tweet = 'This is really a bad day to buy stocks. I think this is the worst day since a long time.'
 tweet = tweet.replace(".", "").replace(",", "").replace(":", "").split()
-encoded_tweet = encode_review(tweet)
-encoded_tweet = keras.preprocessing.sequence.pad_sequences([encoded_tweet], value=word_index["<PAD>"], padding="post",
-                                                           maxlen=200)
+encoded_tweet = encode(tweet)
+encoded_tweet = tf.keras.preprocessing.sequence.pad_sequences([encoded_tweet], value=word_index["<PAD>"], padding="post",
+                                                           maxlen=100)
 
 # Predict the value and print to standard output
 predict = model.predict(encoded_tweet)
 print("Review: ")
-print(decode_review(encoded_tweet[0]))
+print(decode(encoded_tweet[0]))
 print("Prediction: " + str(predict[0]))
