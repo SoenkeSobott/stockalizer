@@ -54,7 +54,7 @@ class Stream:
 
     def start(self):
         # das ist meine id
-        self.stream.filter(follow=["2418840943"], is_async=True)
+        self.stream.filter(track=["$ORCL"], is_async=True)
 
 
 if __name__ == "__main__":
