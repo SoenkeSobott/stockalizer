@@ -1,31 +1,30 @@
+import re
 import tweepy
 from ssh.keys import API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
 import json
 from pprint import pprint
 from pip._vendor import requests
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
-def get_sentiment_score(sentence):
-    analyzer = SentimentIntensityAnalyzer()
-
-    sentiment = analyzer.polarity_scores(sentence)
-    print("Overall sentiment dictionary is : ", sentiment)
-    print("sentence was rated as ", sentiment['neg'] * 100, "% Negative")
-    print("sentence was rated as ", sentiment['neu'] * 100, "% Neutral")
-    print("sentence was rated as ", sentiment['pos'] * 100, "% Positive")
-    return sentiment['compound']
+def clean_tweet(text):
+    text = text.replace('\n', ' ')
+    text = text.replace('\r', ' ')
+    text = text.replace('\t', '')
+    text = text.replace('\xa0', '')
+    text = re.sub('@[A-Za-z0–9]+', '', text)  # Removing @mentions
+    text = re.sub('#', '', text)  # Removing '#' hash tag
+    text = re.sub('RT[\s]+', '', text)  # Removing RT
+    text = re.sub('https?:\/\/\S+', '', text)  # Removing hyperlink
+    return text
 
 
 def process_data(data):
     pprint(data)
-    tweet = data['text']
-    sentiment_score = get_sentiment_score(tweet)
+    tweet = clean_tweet(data['text'])
     put_data = {
         "tweetId": data['id'],
-        "owner": data['user']['screen_name'],
         "text": tweet,
-        "prediction": sentiment_score}
+        "date": data['created_at']}
     print(put_data)
     response = requests.put(
         'https://stockalizer.azurewebsites.net/api/tweets?code'

@@ -1,4 +1,5 @@
 import json
+import re
 import urllib
 from csv import writer
 from urllib.request import urlopen, Request
@@ -7,6 +8,18 @@ from datetime import datetime
 """
 This scraper scrapes the stocktwits api for historical tweets for a specified company
 """
+
+
+def clean_tweet(text):
+    text = text.replace('\n', ' ')
+    text = text.replace('\r', ' ')
+    text = text.replace('\t', '')
+    text = text.replace('\xa0', '')
+    text = re.sub('@[A-Za-z0–9]+', '', text)  # Removing @mentions
+    text = re.sub('#', '', text)  # Removing '#' hash tag
+    text = re.sub('RT[\s]+', '', text)  # Removing RT
+    text = re.sub('https?:\/\/\S+', '', text)  # Removing hyperlink
+    return text
 
 
 def scrape_tweets():
@@ -33,9 +46,11 @@ def scrape_tweets():
             date = datetime.strptime(item['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             date_string = datetime.strftime(date, '%Y-%m-%d %H:%M:%S')
             if item['user']['like_count'] > 1000:
+                # Clean tweet
+                tweet = clean_tweet(item['body'])
                 data = [
                     date_string,
-                    item['body']
+                    tweet
                 ]
                 with open('../../data/files/twitter-news.csv', 'a', newline='', encoding='utf-8') as file:
                     csv_writer = writer(file)
