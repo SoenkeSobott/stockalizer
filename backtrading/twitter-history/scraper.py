@@ -1,5 +1,6 @@
 import json
 import re
+import time
 import urllib
 from csv import writer
 from urllib.request import urlopen, Request
@@ -25,15 +26,18 @@ def clean_tweet(text):
 def scrape_tweets():
     time_interval = 263781899
     date = datetime(2020, 12, 1)
+
     while date > datetime(2017, 12, 1):
         company = 'TSLA'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64)'}
         values = {'name': 'Michael Foord',
                   'location': 'Northampton',
-                  'language': 'Python'}
+                  'language': 'english'}
+
         data = urllib.parse.urlencode(values)
         data = data.encode('ascii')
+        time.sleep(1)
         url = 'https://api.stocktwits.com/api/2/streams/symbol/{0}.json?filter=top&limit=30&max={1}'.format(company,
                                                                                                             str(
                                                                                                                 time_interval))
@@ -45,14 +49,14 @@ def scrape_tweets():
         for item in response_json['messages']:
             date = datetime.strptime(item['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             date_string = datetime.strftime(date, '%Y-%m-%d %H:%M:%S')
-            if item['user']['like_count'] > 1000:
+            if item['user']['like_count'] > 10000:
                 # Clean tweet
                 tweet = clean_tweet(item['body'])
                 data = [
                     date_string,
                     tweet
                 ]
-                with open('../../data/files/twitter-news.csv', 'a', newline='', encoding='utf-8') as file:
+                with open('../../data/files/tesla_tweets.csv', 'a', newline='', encoding='utf-8') as file:
                     csv_writer = writer(file)
                     csv_writer.writerow(data)
                     print('row added')

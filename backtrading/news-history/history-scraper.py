@@ -15,10 +15,10 @@ def stream_news():
     exception_counter = 0
     time_interval = 1606780800000000000
     while time_interval > 1512086400000000000:
-        company = 'AMZN'
+        company = 'TSLA.OQ'
         try:
             response = urlopen(
-                'https://wireapi.reuters.com/v8/feed/rcom/us/marketnews/ric:{0}.OQ?until={1}'.format(company, str(
+                'https://wireapi.reuters.com/v8/feed/rcom/us/marketnews/ric:{0}?until={1}'.format(company, str(
                     time_interval))).read().decode('utf-8')
             response_json = json.loads(response)
             item_count = len(response_json['wireitems']) - 1
@@ -36,7 +36,7 @@ def stream_news():
                     date,
                     template_data['hed']
                 ]
-                with open('news.csv', 'a', newline='') as file:
+                with open('../../data/files/tsla_news.csv', 'a', newline='') as file:
                     csv_writer = writer(file)
                     csv_writer.writerow(data)
 

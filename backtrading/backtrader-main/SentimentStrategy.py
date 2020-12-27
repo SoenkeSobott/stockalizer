@@ -2,7 +2,7 @@ import backtrader as bt
 
 
 class SentimentStrategy(bt.Strategy):
-    params = (('period', 10), ('lowBound', 0.1), ('highBound', 0.9))
+    params = (('period', 10), ('low_bound', 0.1), ('high_bound', 0.9))
 
     def __init__(self):
         self.news_sentiment = self.datas[1].close
@@ -16,14 +16,14 @@ class SentimentStrategy(bt.Strategy):
         # Check for open orders
         if self.order:
             return
-
-        if self.news_sentiment > self.params.highBound and not self.position:
+        sentiment = self.news_sentiment
+        if sentiment > self.params.high_bound and not self.position:
             self.log(f'Sentiment Value: {self.news_sentiment[0]:.2f}')
             # We are not in the market, we will open a trade
             self.log(f'***BUY CREATE {self.stock_price[0]:.2f}')
             # Keep track of the created order to avoid a 2nd order
             self.order = self.buy()
-        elif self.news_sentiment < self.params.lowBound and not self.position:
+        elif sentiment < self.params.low_bound and not self.position:
             self.log(f'Sentiment Value: {self.news_sentiment[0]:.2f}')
             # We are not in the market, we will open a trade
             self.log(f'***SELL CREATE {self.stock_price[0]:.2f}')

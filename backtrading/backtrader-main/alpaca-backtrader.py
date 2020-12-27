@@ -1,74 +1,51 @@
 import backtrader as bt
+import backtrader.analyzers as btanalyzers
 import pytz
+import pandas as pd
 from datetime import datetime
-
-"""
 import alpaca_backtrader_api
-from alpaca_keys import alpaca_paper
-"""
+from ssh.keys import API_KEY, API_SECRET_KEY
 
 from SentimentStrategy import SentimentStrategy
 
-"""
-ALPACA_KEY_ID = alpaca_paper['api_key']
-ALPACA_SECRET_KEY = alpaca_paper['api_secret']
-ALPACA_PAPER = True
-
-tickers = ['AMZN']
-timeframes = {
-    '15Min':15,
-    '30Min':30,
-    '1H':60,
-}
-
-store = Alpaca.AlpacaStore(
-    key_id=ALPACA_KEY_ID,
-    secret_key=ALPACA_SECRET_KEY,
-    paper=ALPACA_PAPER
-)
-
-DataFactory = store.getdata
-
-for timeframe, minutes in timeframes.items():
-        print(f'Adding ticker {ticker} using {timeframe} timeframe at {minutes} minutes.')
-
-        d = DataFactory(
-            dataname=ticker,
-            timeframe=bt.TimeFrame.Minutes,
-            compression=minutes,
-            fromdate=fromdate,
-            todate=todate,
-            historical=True)
-
-        cerebro.adddata(d) # Add this data instead of Yahoo data
-"""
-
-cerebro = bt.Cerebro(optreturn=False)
-cerebro.broker.setcash(100000)
-
-
-class TweetSentimentData(bt.feeds.GenericCSVData):
-    lines = (tuple('sentiment'))
-    params = (
-        ('dtformat', '%Y-%m-%d'),
-        ('date', 0),
-        ('sentiment', 1),
-        ('open', -1),
-        ('high', -1),
-        ('low', -1),
-        ('close', -1),
-        ('volume', -1),
-        ('openinterest', -1),
-    )
-
-
 if __name__ == '__main__':
-    news_sentiment_data = "../../data/files/news_with_scores.csv"
-    tweet_sentiment_data = "datasets/tweet_sentiment.csv"
 
-    price_data = bt.feeds.YahooFinanceData(dataname='AMZN', fromdate=datetime(2017, 12, 1),
-                                           todate=datetime(2020, 12, 1))
-    cerebro.adddata(price_data)
+    ticker = 'AMZN'
+    is_live = False
+
+    cerebro = bt.Cerebro()
+    cerebro.broker.setcash(100000)
+
+    store = alpaca_backtrader_api.AlpacaStore(
+        key_id=API_KEY,
+        secret_key=API_SECRET_KEY,
+        paper=True
+    )
+    if is_live:
+        broker = store.getbroker()  # or just alpaca_backtrader_api.AlpacaBroker()
+        cerebro.setbroker(broker)
+    else:
+        cerebro.broker.setcash(100000)
+        cerebro.broker.setcommission(commission=0.0)
+        cerebro.addsizer(bt.sizers.PercentSizer, percents=20)
+
+    DataFactory = store.getdata
+
+    if is_live:
+        data0 = DataFactory(
+            dataname=ticker,
+            timeframe=bt.TimeFrame.Days,
+        )
+    else:
+        data0 = DataFactory(
+            dataname=ticker,
+            timeframe=bt.TimeFrame.Days,
+            fromdate=pd.Timestamp('2017-12-1'),
+            todate=pd.Timestamp('2020-12-1'),
+            historical=True)
+    cerebro.adddata(data0)
+
+    news_sentiment_data = "../../data/files/news_with_scores.csv"
     cerebro.adddata(bt.feeds.GenericCSVData(
         dataname=news_sentiment_data,
         fromdate=datetime(2017, 12, 1),
@@ -84,31 +61,48 @@ if __name__ == '__main__':
         volume=-1,
         openinterest=-1,
         timeframe=bt.TimeFrame.Days))
-    # cerebro.adddata(TweetSentimentData(dataname=tweet_senitment_data)
-    """ For running single Test
-    cerebro.addstrategy(SentimentStrategy)
-    cerebro.run()
+    """
+    tweet_sentiment_data = "../../data/files/twitter-news_with_scores.csv"
+    cerebro.adddata(bt.feeds.GenericCSVData(
+        dataname=tweet_sentiment_data,
+        fromdate=datetime(2017, 12, 1),
+        todate=datetime(2020, 12, 1),
+        nullvalue=0.0,
+        dtformat=('%Y-%m-%d %H:%M:%S'),
+        datetime=0,
+        time=-1,
+        high=-1,
+        low=-1,
+        open=-1,
+        close=1,
+        volume=-1,
+        openinterest=-1,
+        timeframe=bt.TimeFrame.Days))
     """
 
-    # Add strategy to Cerebro
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio')
-    cerebro.optstrategy(SentimentStrategy, lowBound=[x * 0.1 for x in range(0, 5)],
-                        highBound=[x * 0.1 for x in range(5, 10)])
+    """ For running single Test """
+    cerebro.addstrategy(SentimentStrategy)
+    cerebro.run()
+    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    cerebro.plot()
+    """
 
-    # Default position size
-    cerebro.addsizer(bt.sizers.SizerFix, stake=3)
+    cerebro.addsizer(bt.sizers.PercentSizer, percents=10)
+    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name="sharpe")
+    cerebro.addanalyzer(btanalyzers.DrawDown, _name="drawdown")
+    cerebro.addanalyzer(btanalyzers.Returns, _name="returns")
+    strats = cerebro.optstrategy(SentimentStrategy, low_bound=[x * 0.1 for x in range(0, 5)],
+                                 high_bound=[x * 0.1 for x in range(5, 10)])
 
-    optimized_runs = cerebro.run(stdstats=False)
+    runs = cerebro.run(maxcpus=1)
 
-    final_results_list = []
-    for run in optimized_runs:
-        for strategy in run:
-            PnL = round(strategy.broker.getvalue() - 100000, 2)
-            sharpe = strategy.analyzers.sharpe_ratio.get_analysis()
-            final_results_list.append([strategy.params.lowBound,
-                                       strategy.params.highBound, PnL, sharpe['sharperatio']])
-
-    sort_by_sharpe = sorted(final_results_list, key=lambda x: x[3],
-                            reverse=True)
-    for line in sort_by_sharpe[:5]:
-        print(line)
+    par_list = [[x[0].params.low_bound,
+                 x[0].params.high_bound,
+                 x[0].analyzers.returns.get_analysis()['rnorm100'],
+                 x[0].analyzers.drawdown.get_analysis()['max']['drawdown'],
+                 x[0].analyzers.sharpe.get_analysis()['sharperatio']
+                 ] for x in runs]
+    par_df = pd.DataFrame(par_list, columns=['low_bound', 'high_bound', 'return', 'dd', 'sharpe'])
+    par_df.sort_values(by=['sharpe'], inplace=True, ascending=False)
+    print(par_df)
+    """
