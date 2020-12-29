@@ -2,11 +2,13 @@ import pandas as pd
 import tensorflow as tf
 from util import word_index
 
+"""
+Script that uses history news data from an csv file in the format [date, title] to
+calculate an sentiment score for each title. The sentiment score is then appended
+to the file.
 
-# Script that uses history news data from an csv file in the format [date, title] to
-# calculate an sentiment score for each title. The sentiment score is then appended
-# to the file.
-# Output of this script is a file with the format [date, title, sentiment_score]
+Output of this script is a file with the format [date, title, sentiment_score]
+"""
 
 
 def encode_title(title):
@@ -57,11 +59,12 @@ df.columns = ['date', 'title']
 # Load model
 model = tf.keras.models.load_model('../../data/models/text_classification.h5')
 
-# Encode title for each row in file
+# Encode title for each row
 df['encoded_title'] = df['title'].apply(lambda title: prepare_news_title(title))
 
-# Add sentiment score to each row in file
-df['sentiment_score'] = df['encoded_title'].apply(lambda encoded_title: (model.predict(encoded_title)[0])[0])
+# Add sentiment score to each row
+sentiment_function = lambda encoded_title: (model.predict(encoded_title)[0])[0]
+df['sentiment_score'] = df['encoded_title'].apply(sentiment_function)
 
 # Remove unnecessary columns
 del df['encoded_title']
@@ -69,3 +72,4 @@ del df['title']
 
 # Save to csv file
 df.to_csv('../../data/files/news_with_scores.csv', index=False)
+
