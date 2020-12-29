@@ -2,6 +2,7 @@ import pandas as pd
 import tensorflow as tf
 from util import word_index
 
+
 """
 Script that uses history news data from an csv file in the format [date, title] to
 calculate an sentiment score for each title. The sentiment score is then appended
@@ -52,24 +53,51 @@ def prepare_news_title(title):
     return encoded_title
 
 
-# Get csv file and load into pandas data frame
-df = pd.read_csv('../../data/files/news.csv', header=None)
-df.columns = ['date', 'title']
+def calculate_sentiment_scores(source_csv, target_csv):
+    print('Calculating scores ...')
+    # Get csv file and load into pandas data frame
+    df = pd.read_csv(source_csv, header=None)
+    df.columns = ['date', 'title']
 
-# Load model
-model = tf.keras.models.load_model('../../data/models/text_classification.h5')
+    # Load model
+    model = tf.keras.models.load_model('../../data/models/text_classification.h5')
 
-# Encode title for each row
-df['encoded_title'] = df['title'].apply(lambda title: prepare_news_title(title))
+    # Encode title for each row
+    df['encoded_title'] = df['title'].apply(lambda title: prepare_news_title(title))
 
-# Add sentiment score to each row
-sentiment_function = lambda encoded_title: (model.predict(encoded_title)[0])[0]
-df['sentiment_score'] = df['encoded_title'].apply(sentiment_function)
+    # Add sentiment score to each row
+    sentiment_function = lambda encoded_title: (model.predict(encoded_title)[0])[0]
+    df['sentiment_score'] = df['encoded_title'].apply(sentiment_function)
 
-# Remove unnecessary columns
-del df['encoded_title']
-del df['title']
+    # Remove unnecessary columns
+    del df['encoded_title']
+    del df['title']
 
-# Save to csv file
-df.to_csv('../../data/files/news_with_scores.csv', index=False)
+    # Calculate mean sentiment_scores for one hour intervals, if no sentiment_score for an hour is available, add time
+    # and set default sentiment_score 0.5 (= neutral).
+    df['date'] = df['date'].apply(lambda date: pd.to_datetime(date, format='%d/%m/%Y %H:%M'))
+    df = df.set_index('date').groupby(pd.Grouper(freq='H'), dropna=False).mean()
+    df['sentiment_score'].fillna(0.5, inplace=True)
+
+    # Change date back to old format
+    df.index = df.index.strftime('%d/%m/%Y %H:%M')
+
+    # Save to csv file
+    df.to_csv(target_csv, index=True)
+    print('Successfully calculated sentiment scores and stored to: ' + str(target_csv))
+
+
+def calculate_sentiment_score_for(ticker):
+    calculate_sentiment_scores('../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_news.csv',
+                               '../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_news_with_scores.csv')
+
+
+if __name__ == "__main__":
+    calculate_sentiment_score_for('AMZN')
+    #calculate_sentiment_score_for('NFLX')
+    #calculate_sentiment_score_for('ORCL')
+    #calculate_sentiment_score_for('TSLA')
+
+
+
 
