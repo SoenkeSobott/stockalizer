@@ -93,10 +93,10 @@ def calculate_sentiment_score_for(ticker):
 
 
 if __name__ == "__main__":
-    calculate_sentiment_score_for('AMZN')
+    #calculate_sentiment_score_for('AMZN')
     #calculate_sentiment_score_for('NFLX')
     #calculate_sentiment_score_for('ORCL')
-    #calculate_sentiment_score_for('TSLA')
+    calculate_sentiment_score_for('TSLA')
 
 
 
