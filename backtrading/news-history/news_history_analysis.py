@@ -8,7 +8,7 @@ Script that uses history news data from an csv file in the format [date, title] 
 calculate an sentiment score for each title. The sentiment score is then appended
 to the file.
 
-Output of this script is a file with the format [date, title, sentiment_score]
+Output of this script is a file with the format [date, sentiment_score]
 """
 
 
