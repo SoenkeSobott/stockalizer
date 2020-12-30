@@ -8,7 +8,7 @@ Script that uses history news data from an csv file in the format [date, title] 
 calculate an sentiment score for each title. The sentiment score is then appended
 to the file.
 
-Output of this script is a file with the format [date, title, sentiment_score]
+Output of this script is a file with the format [date, sentiment_score]
 """
 
 
@@ -93,10 +93,9 @@ def calculate_sentiment_score_for(ticker):
 
 
 if __name__ == "__main__":
-    calculate_sentiment_score_for('AMZN')
     #calculate_sentiment_score_for('NFLX')
     #calculate_sentiment_score_for('ORCL')
-    #calculate_sentiment_score_for('TSLA')
+    calculate_sentiment_score_for('TSLA')
 
 
 
