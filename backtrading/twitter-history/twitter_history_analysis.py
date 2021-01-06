@@ -11,6 +11,21 @@ Output of this script is a file with the format [date, compound]
 """
 
 
+def vader_compound_mapping(compound):
+    """
+    This maps a vader compound value to our sentiment score format (0-1)
+
+    :return:
+        the mapped sentiment score
+    """
+    if compound < -0.15:
+        return 0
+    elif compound > 0.15:
+        return 1
+    else:
+        return 0.5
+
+
 def calculate_sentiment_scores(source_csv, target_csv):
     print('Calculating scores ...')
 
@@ -31,8 +46,12 @@ def calculate_sentiment_scores(source_csv, target_csv):
     # Calculate mean sentiment_scores for one hour intervals, if no sentiment_score for an hour is available, add time
     # and set default sentiment_score 0.5 (= neutral).
     df['date'] = df['date'].apply(lambda date: pd.to_datetime(date, format='%d/%m/%Y %H:%M'))
-    df = df.set_index('date').groupby(pd.Grouper(freq='H'), dropna=False).mean()
-    df['compound'].fillna(0.5, inplace=True)
+    df = df.set_index('date').groupby(pd.Grouper(freq='H')).mean()
+    df.dropna(subset=['compound'], inplace=True)
+
+    # Map compound to sentiment score
+    map_compound = lambda compound: (vader_compound_mapping(compound))
+    df['compound'] = df['compound'].apply(map_compound)
 
     # Change date back to old format
     df.index = df.index.strftime('%d/%m/%Y %H:%M')
@@ -48,8 +67,8 @@ def calculate_sentiment_score_for(ticker):
 
 
 if __name__ == "__main__":
-    #calculate_sentiment_score_for('NFLX')
-    #calculate_sentiment_score_for('ORCL')
+    calculate_sentiment_score_for('NFLX')
+    calculate_sentiment_score_for('ORCL')
     calculate_sentiment_score_for('TSLA')
 
 

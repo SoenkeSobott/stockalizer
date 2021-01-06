@@ -76,8 +76,8 @@ def calculate_sentiment_scores(source_csv, target_csv):
     # Calculate mean sentiment_scores for one hour intervals, if no sentiment_score for an hour is available, add time
     # and set default sentiment_score 0.5 (= neutral).
     df['date'] = df['date'].apply(lambda date: pd.to_datetime(date, format='%d/%m/%Y %H:%M'))
-    df = df.set_index('date').groupby(pd.Grouper(freq='H'), dropna=False).mean()
-    df['sentiment_score'].fillna(0.5, inplace=True)
+    df = df.set_index('date').groupby(pd.Grouper(freq='H')).mean()
+    df.dropna(subset=['sentiment_score'], inplace=True)
 
     # Change date back to old format
     df.index = df.index.strftime('%d/%m/%Y %H:%M')
@@ -93,8 +93,8 @@ def calculate_sentiment_score_for(ticker):
 
 
 if __name__ == "__main__":
-    #calculate_sentiment_score_for('NFLX')
-    #calculate_sentiment_score_for('ORCL')
+    calculate_sentiment_score_for('NFLX')
+    calculate_sentiment_score_for('ORCL')
     calculate_sentiment_score_for('TSLA')
 
 
