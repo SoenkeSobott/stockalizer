@@ -18,12 +18,56 @@ def vader_compound_mapping(compound):
     :return:
         the mapped sentiment score
     """
-    if compound < -0.15:
+    if compound <= -0.8:
         return 0
-    elif compound > 0.15:
+    elif -0.8 < compound <= -0.3:
+        return 0.2
+    elif -0.3 < compound <= -0.15:
+        return 0.4
+    elif -0.15 < compound <= 0.15:
+        return 0.5
+    elif 0.15 < compound <= 0.3:
+        return 0.6
+    elif 0.3 < compound <= 0.8:
+        return 0.8
+    elif compound >= 0.8:
         return 1
     else:
         return 0.5
+
+
+def calculate_combined_sentiment_scores(ticker):
+    df = pd.read_csv('../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_tweets_with_scores.csv')
+    df.columns = ['date', 'sentiment_score']
+
+    weights = [1, 0.8, 0.6, 0.4, 0.2]
+    for index, row in df.iterrows():
+        if index > 4:
+            score_1 = df.loc[index]['sentiment_score']*weights[0]
+            score_2 = df.loc[index-1]['sentiment_score']*weights[1]
+            score_3 = df.loc[index-2]['sentiment_score']*weights[2]
+            score_4 = df.loc[index-3]['sentiment_score']*weights[3]
+            score_5 = df.loc[index-4]['sentiment_score']*weights[4]
+
+            sum_weights = 3
+
+            combined_score = (score_1 + score_2 + score_3 + score_4 + score_5)/sum_weights
+            df.at[index, 'sentiment_score'] = combined_score
+        else:
+            combined_score = 0
+            sum_weights = 0
+            for i in range(index + 1):
+                i_score = df.loc[i]['sentiment_score']*weights[i]
+                sum_weights = sum_weights + weights[i]
+                combined_score = combined_score + i_score
+
+            if index != 0:
+                df.at[index, 'sentiment_score'] = combined_score/sum_weights
+
+    # Save to csv file
+    file_path = '../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_tweets_with_combined_scores.csv'
+    df.to_csv(file_path, index=True)
+    print('Successfully calculated combined sentiment scores and stored to: ' + str(file_path))
 
 
 def calculate_sentiment_scores(source_csv, target_csv):
@@ -64,6 +108,7 @@ def calculate_sentiment_scores(source_csv, target_csv):
 def calculate_sentiment_score_for(ticker):
     calculate_sentiment_scores('../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_tweets.csv',
                                '../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_tweets_with_scores.csv')
+    calculate_combined_sentiment_scores(ticker)
 
 
 if __name__ == "__main__":
