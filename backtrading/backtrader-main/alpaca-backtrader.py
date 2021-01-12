@@ -1,6 +1,7 @@
 import backtrader as bt
 import backtrader.analyzers as btanalyzers
 import pytz
+import math
 import pandas as pd
 from datetime import datetime
 import alpaca_backtrader_api
@@ -15,7 +16,7 @@ to_date = datetime(2020, 12, 1)
 
 
 class SentimentStrategy(bt.Strategy):
-    params = (('period', 20), ('devfactor', 2), ('low_bound', 0.2), ('high_bound', 0.5), ('tweet_leverage', 5),
+    params = (('period', 20), ('devfactor', 2), ('low_bound', 0.5), ('high_bound', 0.5), ('tweet_leverage', 5),
               ('news_leverage', 5))
 
     def __init__(self):
@@ -23,7 +24,6 @@ class SentimentStrategy(bt.Strategy):
         self.date = self.data.datetime
         self.order = None
         self.boll = bt.indicators.BollingerBands(period=self.p.period, devfactor=self.p.devfactor)
-        self.prev_sentiment = 0.5
         print(f'Params: low_bound: {self.params.low_bound}, high_bound: {self.params.high_bound}, '
               f'tweet: {self.params.tweet_leverage}, news: {self.params.news_leverage}')
 
@@ -45,39 +45,42 @@ class SentimentStrategy(bt.Strategy):
         # Check for open orders
         if self.order:
             return
-        self.news_sentiment = self.datas[1].close
-        self.tweet_sentiment = self.datas[2].close
+        news_sentiment = self.datas[1].close
+        tweet_sentiment = self.datas[2].close
+        # tweet_sentiment = -1
         self.stock_price = self.datas[0].close
-        if self.news_sentiment == -1 and self.tweet_sentiment == -1:
+        if news_sentiment == -1 and tweet_sentiment == -1:
             return
-        elif self.news_sentiment == -1:
-            sentiment = self.tweet_sentiment[0]
-        elif self.tweet_sentiment == -1:
-            sentiment = self.news_sentiment[0]
+        elif news_sentiment == -1:
+            self.sentiment = tweet_sentiment[0]
+        elif tweet_sentiment == -1:
+            self.sentiment = news_sentiment[0]
         else:
-            sentiment = (self.news_sentiment[0] * self.params.news_leverage + self.tweet_sentiment[
+            self.sentiment = (news_sentiment[0] * self.params.news_leverage + tweet_sentiment[
                 0] * self.params.tweet_leverage) / (self.params.news_leverage + self.params.tweet_leverage)
-        if sentiment > self.params.high_bound and not self.position:
+        if self.position:
+            if (self.trade_type == 'buy' and self.sentiment < (self.params.low_bound)):
+                # We are in the market, we will close the existing trade
+                self.log(f'Sentiment Value: {self.sentiment:.2f}')
+                self.log(f'CLOSE BUY {self.stock_price[0]:.2f}')
+                self.order = self.close()
+            if (self.trade_type == 'sell' and self.sentiment > (self.params.high_bound)):
+                # We are in the market, we will close the existing trade
+                self.log(f'Sentiment Value: {self.sentiment:.2f}')
+                self.log(f'CLOSE SELL {self.stock_price[0]:.2f}')
+                self.order = self.close()
+        if self.sentiment > self.params.high_bound and not self.position:
             if abs(self.stock_price - self.boll.lines.top) > abs(self.stock_price - self.boll.lines.mid):
-                self.log(f'High Sentiment Value: {sentiment:.2f}')
+                self.log(f'High Sentiment Value: {self.sentiment:.2f}')
                 # We are not in the market, we will open a trade
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.buy()
-        elif sentiment < self.params.low_bound and not self.position:
+        elif self.sentiment < self.params.low_bound and not self.position:
             if abs(self.stock_price - self.boll.lines.bot) > abs(self.stock_price - self.boll.lines.mid):
-                self.log(f'Low Sentiment Value: {sentiment:.2f}')
+                self.log(f'Low Sentiment Value: {self.sentiment:.2f}')
                 # We are not in the market, we will open a trade
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.sell()
-        else:
-            if self.position:
-                if (self.trade_type == 'buy' and sentiment < (self.params.low_bound + 0.2)) or (
-                        self.trade_type == 'sell' and sentiment > (self.params.high_bound - 0.2)):
-                    # We are in the market, we will close the existing trade
-                    self.log(f'Sentiment Value: {sentiment:.2f}')
-                    self.log(f'CLOSE CREATE {self.stock_price[0]:.2f}')
-                    self.order = self.close()
-        self.prev_sentiment = sentiment
 
     def notify_order(self, order):  # helper class for logging
         if order.status in [order.Submitted, order.Accepted]:
@@ -91,6 +94,7 @@ class SentimentStrategy(bt.Strategy):
                 self.log(f'BUY EXECUTED, {order.executed.price:.2f}')
             elif order.issell():
                 self.trade_type = 'sell'
+                self.oreder_created = self.datas[0].datetime.datetime(0)
                 self.log(f'SELL EXECUTED, {order.executed.price:.2f}')
             self.bar_executed = len(self)
 
@@ -120,6 +124,140 @@ class SentimentStrategy(bt.Strategy):
         print('==================================================')
 
 
+class ConnorStrategy(bt.Strategy):
+    def __init__(self):
+        self.live_bars = False
+        self.date = self.data.datetime
+        self.order = None
+        self.connor_rsi = ConnorsRSI()
+
+    def notify_data(self, data, status, *args, **kwargs):
+        super().notify_data(data, status, *args, **kwargs)
+        print('*' * 5, 'LIVE DATA STATUS:', data._getstatusname(status), *args)
+        if data._getstatusname(status) == "LIVE":
+            self.live_bars = True
+
+    def next(self):
+        if not self.live_bars and not is_backtesting:
+            # skip if no live data yet available and we are not backtesting
+            return
+        """
+        if datetime.time(self.datas[0].datetime) < datetime.time(9, 45) or datetime.time(self.datas[0].datetime) > datetime.time(16, 0):
+            # don't operate until the market has been running 15 minutes or is closed again
+            return  #
+        """
+        # Check for open orders
+        if self.order and math.isnan(self.connor_rsi[0]):
+            return
+        self.stock_price = self.datas[0].close
+        if self.position:
+            if (self.trade_type == 'buy' and self.connor_rsi[0] < 95):
+                # We are in the market, we will close the existing trade
+                self.log(f'Connor Value: {self.connor_rsi:.2f}')
+                self.log(f'CLOSE BUY {self.stock_price[0]:.2f}')
+                self.order = self.close()
+            if (self.trade_type == 'sell' and self.connor_rsi[0] > 5):
+                # We are in the market, we will close the existing trade
+                self.log(f'Connor Value: {self.connor_rsi[0]:.2f}')
+                self.log(f'CLOSE SELL {self.stock_price[0]:.2f}')
+                self.order = self.close()
+        else:
+            if self.connor_rsi[0] > 95:
+                # We are not in the market, we will open a trade
+                # Keep track of the created order to avoid a 2nd order
+                self.log(f'Connor Value: {self.connor_rsi[0]:.2f}')
+                self.order = self.buy()
+            elif self.connor_rsi[0] < 5:
+                self.log(f'Connor Value: {self.connor_rsi[0]:.2f}')
+                # We are not in the market, we will open a trade
+                # Keep track of the created order to avoid a 2nd order
+                self.order = self.sell()
+
+    def notify_order(self, order):  # helper class for logging
+        if order.status in [order.Submitted, order.Accepted]:
+            # Existing order - Nothing to do
+            return
+            # Check if an order has been completed
+            # Attention: broker could reject order if not enough cash
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.trade_type = 'buy'
+                self.log(f'BUY EXECUTED, {order.executed.price:.2f}')
+            elif order.issell():
+                self.trade_type = 'sell'
+                self.oreder_created = self.datas[0].datetime.datetime(0)
+                self.log(f'SELL EXECUTED, {order.executed.price:.2f}')
+            self.bar_executed = len(self)
+
+        elif order.status in [order.Canceled, order.Margin,
+                              order.Rejected]:
+            self.log('Order Canceled/Margin/Rejected')
+
+        # Reset orders
+        self.order = None
+
+    def log(self, txt, dt=None):  # Helper log function
+        dt = dt or self.datas[0].datetime.datetime(0)
+        print(f'{dt.isoformat()} {txt}')
+
+    def notify_trade(self, trade):  # Helper log function
+        if not trade.isclosed:
+            return
+
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
+
+    def stop(self):
+        print('==================================================')
+        print('Starting Value: %.2f' % self.broker.startingcash)
+        print('Ending   Value: %.2f' % self.broker.getvalue())
+        print('Profit/Loss: %.2f' % (self.broker.getvalue() - self.broker.startingcash))
+        print('==================================================')
+
+
+class Streak(bt.ind.PeriodN):
+    '''
+    Keeps a counter of the current upwards/downwards/neutral streak
+    '''
+    lines = ('streak',)
+    params = dict(period=2)  # need prev/cur days (2) for comparisons
+
+    curstreak = 0
+
+    def next(self):
+        d0, d1 = self.data[0], self.data[-1]
+
+        if d0 > d1:
+            self.l.streak[0] = self.curstreak = max(1, self.curstreak + 1)
+        elif d0 < d1:
+            self.l.streak[0] = self.curstreak = min(-1, self.curstreak - 1)
+        else:
+            self.l.streak[0] = self.curstreak = 0
+
+
+class ConnorsRSI(bt.Indicator):
+    '''
+    Calculates the ConnorsRSI as:
+        - (RSI(per_rsi) + RSI(Streak, per_streak) + PctRank(per_rank)) / 3
+    '''
+    lines = ('crsi',)
+    params = dict(prsi=3, pstreak=2, prank=100)
+
+    def __init__(self):
+        # Calculate the components
+        rsi = bt.indicators.RSI_Safe(self.data, period=self.p.prsi)
+        # rsi = bt.ind.RSI(self.data, period=self.p.prsi)
+
+        streak = Streak(self.data)
+        rsi_streak = bt.indicators.RSI_Safe(streak, period=self.p.pstreak)
+        # rsi_streak = bt.ind.RSI(streak, period=self.p.pstreak)
+
+        prank = bt.ind.PercentRank(self.data, period=self.p.prank)
+
+        # Apply the formula
+        self.l.crsi = (rsi + rsi_streak + prank) / 3.0
+
+
 # Helper Class for adding a CSV with sentiment scores
 class SentimentCSV(bt.feeds.GenericCSVData):
     # Add a 'pe' line to the inherited ones from the base class
@@ -128,6 +266,30 @@ class SentimentCSV(bt.feeds.GenericCSVData):
     # openinterest in GenericCSVData has index 7 ... add 1
     # add the parameter to the parameters inherited from the base class
     params = (('sentiment_score', 8),)
+
+
+class SentimentSizer(bt.Sizer):
+    def _getsizing(self, comminfo, cash, data, isbuy):
+        position = self.broker.getposition(data)
+        if position.size:
+            return
+        else:
+            stake = self.broker.getvalue() / data.close[0]
+            sentiment_score = self.strategy.sentiment
+            if isbuy:
+                if sentiment_score > 0.6:
+                    return stake * 0.4
+                elif sentiment_score > 0.75:
+                    return stake * 0.6
+                elif sentiment_score > 0.9:
+                    return stake * 0.8
+            else:
+                if sentiment_score < 0.4:
+                    return stake * -0.4
+                elif sentiment_score < 0.25:
+                    return stake * -0.6
+                elif sentiment_score < 0.1:
+                    return stake * -0.8
 
 
 if __name__ == '__main__':
@@ -145,7 +307,8 @@ if __name__ == '__main__':
     if is_backtesting:
         cerebro.broker.setcash(100000)
         cerebro.broker.setcommission(commission=0.0)
-        cerebro.addsizer(bt.sizers.PercentSizer, percents=20)
+        cerebro.broker.set_coc(True)
+        cerebro.addsizer(SentimentSizer)
         data_timeframe = bt.TimeFrame.Minutes
         data_compression = 60
 
@@ -226,9 +389,10 @@ if __name__ == '__main__':
     if param_optimization == False:
         """ For running single Test"""
         cerebro.addstrategy(SentimentStrategy)
+        # cerebro.addstrategy(ConnorStrategy)
         cerebro.run()
         print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-        cerebro.plot()
+        cerebro.plot(subplot=True, plotabove=True)
     else:
         # Param optimization
         cerebro.addsizer(bt.sizers.PercentSizer, percents=10)
