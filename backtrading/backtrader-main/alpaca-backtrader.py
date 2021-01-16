@@ -10,9 +10,16 @@ from ssh.keys import API_KEY, API_SECRET_KEY
 ticker = 'NFLX'
 is_paper = True
 is_backtesting = True
+
+#to start multiple backtesting runs which try to optimize the strategy parameters
 param_optimization = False
+
 from_date = datetime(2019, 12, 1)
 to_date = datetime(2020, 12, 1)
+
+#LIVE TRADING URLS
+news_live_data_url = ''
+tweet_live_data_url = ''
 
 
 class SentimentStrategy(bt.Strategy):
@@ -45,8 +52,8 @@ class SentimentStrategy(bt.Strategy):
         # Check for open orders
         if self.order:
             return
-        news_sentiment = self.datas[1].close
-        tweet_sentiment = self.datas[2].close
+        news_sentiment = self.datas[1].sentiment_score
+        tweet_sentiment = self.datas[2].sentiment_score
         # tweet_sentiment = -1
         self.stock_price = self.datas[0].close
         if news_sentiment == -1 and tweet_sentiment == -1:
@@ -333,10 +340,10 @@ if __name__ == '__main__':
             high=-1,
             low=-1,
             open=-1,
-            close=1,
+            close=-1,
             volume=-1,
             openinterest=-1,
-            sentiment_score=-1,
+            sentiment_score=1,
             timeframe=data_timeframe,
             compression=data_compression)
         tweet_sentiment_data = "../../data/files/{0}/{1}_tweets_with_scores.csv".format(ticker, ticker.lower())
@@ -351,18 +358,19 @@ if __name__ == '__main__':
             high=-1,
             low=-1,
             open=-1,
-            close=1,
+            close=-1,
             volume=-1,
             openinterest=-1,
-            sentiment_score=-1,
+            sentiment_score=1,
             timeframe=data_timeframe,
             compression=data_compression)
     else:  # live/paper trading
         broker = store.getbroker()  # or just alpaca_backtrader_api.AlpacaBroker()
         cerebro.setbroker(broker)
+        cerebro.addsizer(SentimentSizer)
         data_timeframe = bt.TimeFrame.Minutes
         data_compression = 60
-        data_timezone = pytz.timezone('US/Eastern')
+        data_timezone = pytz.timezone('Europe/Berlin')
         # Add data
         data0 = DataFactory(
             dataname=ticker,
@@ -370,15 +378,37 @@ if __name__ == '__main__':
             compression=data_compression
         )
 
-        if args.news_data is not None:
-            datakwargs_news = dict(
-                timeframe=data_timeframe,
-                compression=data_compression,
-                historical=False,
-                tz=data_timezone
-            )
-            # eventuell als pandas DF einlesen? https://github.com/mementum/backtrader/blob/0426c777b0abdfafbb0988f5c31347553256a2de/backtrader/feeds/pandafeed.py
-            # https://github.com/mementum/backtrader/blob/master/samples/data-pandas/data-pandas.py
+        if news_live_data_url != '':
+            df_news = pd.read_json(news_live_data_url, orient='records')
+            data1 = bt.feeds.PandasData(dataname=df_news,
+                                        nullvalue=-1,
+                                        dtformat=('%d/%m/%Y %H:%M'),
+                                        datetime=0,
+                                        time=-1,
+                                        high=-1,
+                                        low=-1,
+                                        open=-1,
+                                        close=-1,
+                                        volume=-1,
+                                        openinterest=-1,
+                                        sentiment_score=1
+                                        )
+
+        if tweet_live_data_url != '':
+            df_news = pd.read_json(tweet_live_data_url, orient='records')
+            data2 = bt.feeds.PandasData(dataname=df_tweets,
+                                        nullvalue=-1,
+                                        dtformat=('%d/%m/%Y %H:%M'),
+                                        datetime=0,
+                                        time=-1,
+                                        high=-1,
+                                        low=-1,
+                                        open=-1,
+                                        close=-1,
+                                        volume=-1,
+                                        openinterest=-1,
+                                        sentiment_score=1
+                                        )
 
     cerebro.adddata(data0)
     if data1 is not None:
