@@ -5,6 +5,8 @@ import json
 from pprint import pprint
 from pip._vendor import requests
 
+ticker = 'NFLX'
+
 
 def clean_tweet(text):
     text = text.replace('\n', ' ')
@@ -52,8 +54,7 @@ class Stream:
         self.stream = tweepy.Stream(auth=auth_token, listener=stream_listener)
 
     def start(self):
-        # das ist meine id
-        self.stream.filter(track=["$ORCL"], is_async=True)
+        self.stream.filter(track=["${0}".format(ticker)], is_async=True)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 import json
 import re
-import time
 import urllib
 from csv import writer
 from urllib.request import urlopen, Request
@@ -27,7 +26,7 @@ def scrape_tweets():
     time_interval = 263781899
     date = datetime(2020, 12, 1)
 
-    while date > datetime(2017, 12, 1):
+    while date > datetime(2019, 12, 1):
         company = 'NFLX'
         file_name = 'nflx'
         headers = {
@@ -49,7 +48,7 @@ def scrape_tweets():
         for item in response_json['messages']:
             date = datetime.strptime(item['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             date_string = datetime.strftime(date, '%Y-%m-%d %H:%M:%S')
-            if item['user']['like_count'] > 5000:
+            if item['user']['like_count'] < 200:
                 # Clean tweet
                 tweet = clean_tweet(item['body'])
                 data = [

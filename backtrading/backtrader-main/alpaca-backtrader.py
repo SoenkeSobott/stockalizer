@@ -11,13 +11,13 @@ ticker = 'NFLX'
 is_paper = True
 is_backtesting = True
 
-#to start multiple backtesting runs which try to optimize the strategy parameters
+# to start multiple backtesting runs which try to optimize the strategy parameters
 param_optimization = False
 
 from_date = datetime(2019, 12, 1)
 to_date = datetime(2020, 12, 1)
 
-#LIVE TRADING URLS
+# LIVE TRADING URLS
 news_live_data_url = ''
 tweet_live_data_url = ''
 
@@ -44,27 +44,21 @@ class SentimentStrategy(bt.Strategy):
         if not self.live_bars and not is_backtesting:
             # skip if no live data yet available and we are not backtesting
             return
-        """
-        if datetime.time(self.datas[0].datetime) < datetime.time(9, 45) or datetime.time(self.datas[0].datetime) > datetime.time(16, 0):
-            # don't operate until the market has been running 15 minutes or is closed again
-            return  #
-        """
         # Check for open orders
         if self.order:
             return
-        news_sentiment = self.datas[1].sentiment_score
-        tweet_sentiment = self.datas[2].sentiment_score
-        # tweet_sentiment = -1
+        news_sentiment = self.datas[1].sentiment_score[0]
+        tweet_sentiment = self.datas[2].sentiment_score[0]
         self.stock_price = self.datas[0].close
         if news_sentiment == -1 and tweet_sentiment == -1:
             return
         elif news_sentiment == -1:
-            self.sentiment = tweet_sentiment[0]
+            self.sentiment = tweet_sentiment
         elif tweet_sentiment == -1:
-            self.sentiment = news_sentiment[0]
+            self.sentiment = news_sentiment
         else:
-            self.sentiment = (news_sentiment[0] * self.params.news_leverage + tweet_sentiment[
-                0] * self.params.tweet_leverage) / (self.params.news_leverage + self.params.tweet_leverage)
+            self.sentiment = (news_sentiment * self.params.news_leverage + tweet_sentiment * self.params.tweet_leverage) / (
+                                         self.params.news_leverage + self.params.tweet_leverage)
         if self.position:
             if (self.trade_type == 'buy' and self.sentiment < (self.params.low_bound)):
                 # We are in the market, we will close the existing trade
@@ -77,13 +71,13 @@ class SentimentStrategy(bt.Strategy):
                 self.log(f'CLOSE SELL {self.stock_price[0]:.2f}')
                 self.order = self.close()
         if self.sentiment > self.params.high_bound and not self.position:
-            if abs(self.stock_price - self.boll.lines.top) > abs(self.stock_price - self.boll.lines.mid):
+            if abs(self.stock_price[0] - self.boll.lines.top) > abs(self.stock_price[0] - self.boll.lines.mid):
                 self.log(f'High Sentiment Value: {self.sentiment:.2f}')
                 # We are not in the market, we will open a trade
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.buy()
         elif self.sentiment < self.params.low_bound and not self.position:
-            if abs(self.stock_price - self.boll.lines.bot) > abs(self.stock_price - self.boll.lines.mid):
+            if abs(self.stock_price[0] - self.boll.lines.bot) > abs(self.stock_price[0] - self.boll.lines.mid):
                 self.log(f'Low Sentiment Value: {self.sentiment:.2f}')
                 # We are not in the market, we will open a trade
                 # Keep track of the created order to avoid a 2nd order
@@ -122,6 +116,10 @@ class SentimentStrategy(bt.Strategy):
 
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
+
+    def notify_store(self, msg, *args, **kwargs):
+        super().notify_store(msg, *args, **kwargs)
+        self.log(msg)
 
     def stop(self):
         print('==================================================')
@@ -275,6 +273,16 @@ class SentimentCSV(bt.feeds.GenericCSVData):
     params = (('sentiment_score', 8),)
 
 
+# Helper Class for adding a Pandas Dataframe with sentiment scores
+class PandasDF(bt.feeds.PandasData):
+    # Add a 'pe' line to the inherited ones from the base class
+    lines = ('datetime', 'sentiment_score',)
+
+    # openinterest in PandasData has index 7 ... add 1
+    # add the parameter to the parameters inherited from the base class
+    params = (('sentiment_score', 1),)
+
+
 class SentimentSizer(bt.Sizer):
     def _getsizing(self, comminfo, cash, data, isbuy):
         position = self.broker.getposition(data)
@@ -284,14 +292,14 @@ class SentimentSizer(bt.Sizer):
             stake = self.broker.getvalue() / data.close[0]
             sentiment_score = self.strategy.sentiment
             if isbuy:
-                if sentiment_score > 0.6:
+                if sentiment_score > 0.5:
                     return stake * 0.4
                 elif sentiment_score > 0.75:
                     return stake * 0.6
                 elif sentiment_score > 0.9:
                     return stake * 0.8
             else:
-                if sentiment_score < 0.4:
+                if sentiment_score < 0.5:
                     return stake * -0.4
                 elif sentiment_score < 0.25:
                     return stake * -0.6
@@ -300,6 +308,9 @@ class SentimentSizer(bt.Sizer):
 
 
 if __name__ == '__main__':
+    import logging
+
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
     cerebro = bt.Cerebro()
     cerebro.broker.setcash(100000)
 
@@ -365,50 +376,28 @@ if __name__ == '__main__':
             timeframe=data_timeframe,
             compression=data_compression)
     else:  # live/paper trading
-        broker = store.getbroker()  # or just alpaca_backtrader_api.AlpacaBroker()
-        cerebro.setbroker(broker)
         cerebro.addsizer(SentimentSizer)
-        data_timeframe = bt.TimeFrame.Minutes
-        data_compression = 60
+        data_timeframe = bt.TimeFrame.Days
         data_timezone = pytz.timezone('Europe/Berlin')
         # Add data
         data0 = DataFactory(
             dataname=ticker,
             timeframe=data_timeframe,
-            compression=data_compression
+            historical=False
         )
-
+        broker = store.getbroker()
+        cerebro.setbroker(broker)
         if news_live_data_url != '':
             df_news = pd.read_json(news_live_data_url, orient='records')
-            data1 = bt.feeds.PandasData(dataname=df_news,
-                                        nullvalue=-1,
-                                        dtformat=('%d/%m/%Y %H:%M'),
-                                        datetime=0,
-                                        time=-1,
-                                        high=-1,
-                                        low=-1,
-                                        open=-1,
-                                        close=-1,
-                                        volume=-1,
-                                        openinterest=-1,
-                                        sentiment_score=1
-                                        )
+            data1 = PandasDF(dataname=df_news,
+                             datetime=0,
+                             sentiment_score=1)
 
         if tweet_live_data_url != '':
-            df_news = pd.read_json(tweet_live_data_url, orient='records')
-            data2 = bt.feeds.PandasData(dataname=df_tweets,
-                                        nullvalue=-1,
-                                        dtformat=('%d/%m/%Y %H:%M'),
-                                        datetime=0,
-                                        time=-1,
-                                        high=-1,
-                                        low=-1,
-                                        open=-1,
-                                        close=-1,
-                                        volume=-1,
-                                        openinterest=-1,
-                                        sentiment_score=1
-                                        )
+            df_tweets = pd.read_json(tweet_live_data_url, orient='records')
+            data2 = PandasDF(dataname=df_tweets,
+                             datetime=0,
+                             sentiment_score=1)
 
     cerebro.adddata(data0)
     if data1 is not None:
