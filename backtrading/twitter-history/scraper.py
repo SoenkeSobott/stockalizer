@@ -48,7 +48,7 @@ def scrape_tweets():
         for item in response_json['messages']:
             date = datetime.strptime(item['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             date_string = datetime.strftime(date, '%Y-%m-%d %H:%M:%S')
-            if item['user']['like_count'] < 200:
+            if item['user']['like_count'] > 5000:
                 # Clean tweet
                 tweet = clean_tweet(item['body'])
                 data = [
