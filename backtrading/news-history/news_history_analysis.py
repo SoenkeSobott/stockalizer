@@ -119,7 +119,6 @@ def calculate_sentiment_scores(source_csv, target_csv):
     # Save to csv file
     df.to_csv(target_csv, index=True)
 
-
     print('Successfully calculated sentiment scores and stored to: ' + str(target_csv))
 
 

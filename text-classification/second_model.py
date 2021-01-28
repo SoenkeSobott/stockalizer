@@ -10,6 +10,8 @@ from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 """
 Creates a text classification model based on movie reviews and saves it.
+This is only for testing another model. NOT used for analysis in Backtesting 
+or Livetrading.
 
 See https://www.tensorflow.org/tutorials/keras/text_classification
 

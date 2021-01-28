@@ -37,6 +37,15 @@ def vader_compound_mapping(compound):
 
 
 def calculate_combined_sentiment_scores(ticker):
+    """
+    Calculates a sentiment score that includes also sentiment scores of the
+    last 5 hours. With that we achieved a better accuracy of the sentiment
+    scores.
+
+    The calculated scores will then be saved to a local CSV file.
+
+    :param ticker: The ticker of the analysed file
+    """
     df = pd.read_csv('../../data/files/' + str(ticker) + '/' + str(ticker).lower() + '_tweets_with_scores.csv')
     df.columns = ['date', 'sentiment_score']
 
@@ -71,6 +80,13 @@ def calculate_combined_sentiment_scores(ticker):
 
 
 def calculate_sentiment_scores(source_csv, target_csv):
+    """
+    Reads data from an source csv and appends an sentiment score to each line inside the file.
+    The new file is then stored at the target csv location.
+
+    :param source_csv: The source path of the csv file
+    :param target_csv: The target path of the csv file
+    """
     print('Calculating scores ...')
 
     # Get csv file and load into pandas data frame

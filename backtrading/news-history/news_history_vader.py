@@ -1,6 +1,12 @@
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 import pandas as pd
 
+"""
+Script for analysing the news data with the Vader sentiment
+Model. NOT used for analysis in Backtesting 
+or Livetrading.
+"""
+
 sia = SIA()
 
 # Get csv file and load into pandas data frame
